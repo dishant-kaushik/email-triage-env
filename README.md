@@ -340,7 +340,7 @@ http://localhost:7860/docs
 
 <div align="center">
 
-Made with ❤️ for the OpenEnv Hackathon
+Made with ❤️ from my Side
 
 **[🌐 Live Space](https://huggingface.co/spaces/dishu1999/email-triage-env) • [📖 API Docs](https://dishu1999-email-triage-env.hf.space/docs) • [🏥 Health](https://dishu1999-email-triage-env.hf.space/health)**
 
