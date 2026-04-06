@@ -1,7 +1,7 @@
 # Email Triage OpenEnv
 
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-compatible-brightgreen)](https://openenv.dev)
-[![HuggingFace Spaces](https://img.shields.io/badge/HuggingFace-Spaces-yellow)](https://huggingface.co/spaces)
+[![HuggingFace Spaces](https://huggingface.co/spaces/dishu1999/email-triage-env)](https://huggingface.co/spaces)
 
 An **OpenEnv-compliant reinforcement learning environment** where AI agents learn to manage a real-world email inbox. Agents triage, classify, prioritize, reply to, and archive emails — a task knowledge workers perform dozens of times daily.
 

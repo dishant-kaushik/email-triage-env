@@ -1,0 +1,80 @@
+name: email-triage-env
+version: "1.0.0"
+description: >
+  A real-world email triage environment where AI agents learn to manage
+  an inbox — classifying, prioritizing, routing, and drafting replies.
+  Models a task that knowledge workers perform dozens of times daily.
+author: openenv-submission
+tags:
+  - openenv
+  - email
+  - triage
+  - nlp
+  - productivity
+
+tasks:
+  - id: classify_emails
+    name: Email Classification
+    difficulty: easy
+    description: >
+      Classify 3 emails into correct categories (spam, urgent, normal, newsletter).
+      Agent earns partial credit per correct classification.
+    max_steps: 10
+    reward_threshold: 0.8
+
+  - id: prioritize_and_label
+    name: Prioritize and Label Inbox
+    difficulty: medium
+    description: >
+      Given 5 mixed emails, assign priority levels (high/medium/low),
+      apply correct labels, and draft a short reply to the most urgent email.
+      Multi-dimensional scoring across all three sub-tasks.
+    max_steps: 20
+    reward_threshold: 0.7
+
+  - id: full_inbox_management
+    name: Full Inbox Management
+    difficulty: hard
+    description: >
+      Manage a realistic 10-email inbox. Triage all emails, detect duplicate
+      threads, identify action items, draft replies for emails requiring response,
+      and archive resolved threads. Complex partial scoring with penalties for
+      errors.
+    max_steps: 40
+    reward_threshold: 0.6
+
+observation_space:
+  type: object
+  description: Current inbox state with email list and metadata
+  fields:
+    inbox: list of email objects with id, subject, sender, body, timestamp
+    current_task: task identifier string
+    step_count: integer
+    max_steps: integer
+    task_info: dict with task-specific context
+
+action_space:
+  type: object
+  description: Agent action on inbox
+  fields:
+    action_type: one of [classify, prioritize, label, reply, archive, flag, skip]
+    email_id: target email identifier
+    value: action payload (category string, priority level, reply text, etc.)
+
+reward_space:
+  type: float
+  range: [0.0, 1.0]
+  description: >
+    Per-step partial reward based on correctness of action.
+    Cumulative episode reward normalized to [0.0, 1.0].
+
+api:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  health: GET /health
+
+docker:
+  base_image: python:3.11-slim
+  port: 7860
+  startup_command: uvicorn env.server:app --host 0.0.0.0 --port 7860
