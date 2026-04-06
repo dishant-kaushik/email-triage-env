@@ -1,0 +1,43 @@
+[project]
+name = "email-triage-env"
+version = "1.0.0"
+description = "OpenEnv-compliant email triage environment for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "dishu1999"}
+]
+keywords = ["openenv", "reinforcement-learning", "email", "agent"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "fastapi==0.111.0",
+    "uvicorn[standard]==0.29.0",
+    "pydantic==2.7.1",
+    "requests==2.31.0",
+    "openai==1.30.1",
+    "pyyaml==6.0.1",
+    "python-multipart==0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "httpx>=0.24.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["env*"]
+
+[project.urls]
+Homepage = "https://huggingface.co/spaces/dishu1999/email-triage-env"
+Repository = "https://github.com/dishant-kaushik/email-triage-env"
