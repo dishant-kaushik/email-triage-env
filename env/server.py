@@ -4,11 +4,10 @@ Endpoints: POST /reset, POST /step, GET /state, GET /health, GET /tasks
 """
 
 from __future__ import annotations
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from env.environment import EmailTriageEnv, ALL_TASK_IDS
 from env.models import (
@@ -35,19 +34,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Single shared environment instance (stateful per HF Space instance)
 _env = EmailTriageEnv()
 
 
 @app.get("/health")
 async def health():
-    """Health check — returns 200 when server is ready."""
     return {"status": "ok", "version": "1.0.0", "environment": "email-triage-env"}
 
 
 @app.get("/tasks")
 async def list_tasks():
-    """List all available task IDs."""
     tasks = []
     for tid in ALL_TASK_IDS:
         from env.environment import TASK_REGISTRY
@@ -63,24 +59,32 @@ async def list_tasks():
 
 
 @app.post("/reset")
-async def reset(request: ResetRequest):
+async def reset(request: Request):
     """
-    Reset the environment for the specified task.
-    Returns the initial observation.
+    Reset the environment. Body is optional.
+    Defaults to task_id=classify_emails, seed=42 if no body provided.
     """
     try:
-        obs = _env.reset(task_id=request.task_id, seed=request.seed or 42)
+        try:
+            body = await request.json()
+            if not isinstance(body, dict):
+                body = {}
+        except Exception:
+            body = {}
+
+        task_id = body.get("task_id", "classify_emails")
+        seed = body.get("seed", 42) or 42
+
+        obs = _env.reset(task_id=task_id, seed=seed)
         return obs.model_dump()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {e}")
 
 
 @app.post("/step")
 async def step(request: StepRequest):
-    """
-    Apply an action to the environment.
-    Returns observation, reward, done flag, and info dict.
-    """
     try:
         obs, reward, done, info = _env.step(request.action)
         return StepResponse(
@@ -97,19 +101,16 @@ async def step(request: StepRequest):
 
 @app.get("/state")
 async def state():
-    """Returns current environment state."""
     return _env.state()
 
 
 @app.get("/grade")
 async def grade():
-    """Returns the current episode grade."""
     return {"grade": _env.grade(), "task_id": _env._task_id}
 
 
 @app.get("/")
 async def root():
-    """Root endpoint — links to docs."""
     return {
         "name": "Email Triage OpenEnv",
         "docs": "/docs",
