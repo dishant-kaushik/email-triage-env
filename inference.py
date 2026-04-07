@@ -9,10 +9,17 @@ import traceback
 
 import requests
 
+# Read exactly what the validator injects
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN", "sk-placeholder")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 ENV_BASE_URL = os.environ.get("ENV_BASE_URL", "http://localhost:7860")
+
+# Normalize the base URL — strip trailing slash, ensure it ends with /v1
+_base = API_BASE_URL.rstrip("/")
+if not _base.endswith("/v1"):
+    _base = _base + "/v1"
+API_BASE_URL_NORMALIZED = _base
 
 BENCHMARK_NAME = "email-triage-env"
 SUCCESS_THRESHOLD = 0.5
@@ -23,15 +30,34 @@ ALL_TASK_IDS = [
     "full_inbox_management",
 ]
 
+# --- LLM calls via raw HTTP (no openai SDK) to avoid client init crashes ---
+
+def call_llm_raw(messages):
+    """Call the LLM proxy directly via requests — bypasses OpenAI SDK init issues."""
+    url = f"{API_BASE_URL_NORMALIZED}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "max_tokens": 256,
+        "temperature": 0.0,
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["choices"][0]["message"]["content"].strip()
+
+
+# --- Also try OpenAI SDK as secondary method ---
 try:
     from openai import OpenAI
-    client = OpenAI(
-        api_key=API_KEY,
-        base_url=API_BASE_URL,
-    )
+    _sdk_client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL_NORMALIZED)
 except Exception as e:
-    sys.stderr.write(f"OpenAI client init warning: {e}\n")
-    client = None
+    sys.stderr.write(f"OpenAI SDK init warning: {e}\n")
+    _sdk_client = None
 
 
 def env_reset(task_id, seed=42):
@@ -112,58 +138,70 @@ def get_rule_based_action(obs):
     return {"action_type": "done", "email_id": None, "value": None}
 
 
-def call_llm(obs):
-    if client is None:
-        return None
-    try:
-        inbox = obs.get("inbox", [])
-        task_info = obs.get("task_info", {})
-        prompt_data = {
-            "task": task_info.get("task_name"),
-            "description": task_info.get("description"),
-            "objectives": task_info.get("objectives", []),
-            "hints": task_info.get("hints", []),
-            "actions_taken": task_info.get("actions_taken", []),
-            "step": obs.get("step_count"),
-            "max_steps": obs.get("max_steps"),
-            "inbox": [
-                {
-                    "id": e["id"],
-                    "subject": e["subject"],
-                    "sender": e["sender_name"],
-                    "body": e["body"][:200],
-                    "category": e.get("category"),
-                    "priority": e.get("priority"),
-                    "label": e.get("label"),
-                }
-                for e in inbox
-            ],
-        }
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            max_tokens=256,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps(prompt_data)},
-            ],
-            temperature=0.0,
-        )
-        raw = response.choices[0].message.content.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
-    except Exception as e:
-        sys.stderr.write(f"LLM call failed: {e}\n")
-        return None
+def build_messages(obs):
+    inbox = obs.get("inbox", [])
+    task_info = obs.get("task_info", {})
+    prompt_data = {
+        "task": task_info.get("task_name"),
+        "description": task_info.get("description"),
+        "objectives": task_info.get("objectives", []),
+        "hints": task_info.get("hints", []),
+        "actions_taken": task_info.get("actions_taken", []),
+        "step": obs.get("step_count"),
+        "max_steps": obs.get("max_steps"),
+        "inbox": [
+            {
+                "id": e["id"],
+                "subject": e["subject"],
+                "sender": e["sender_name"],
+                "body": e["body"][:200],
+                "category": e.get("category"),
+                "priority": e.get("priority"),
+                "label": e.get("label"),
+            }
+            for e in inbox
+        ],
+    }
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": json.dumps(prompt_data)},
+    ]
+
+
+def parse_llm_response(raw):
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    return json.loads(raw)
 
 
 def get_agent_action(obs):
-    action = call_llm(obs)
-    if action is not None:
-        return action
+    messages = build_messages(obs)
+
+    # Try raw HTTP first (most reliable — no SDK init issues)
+    try:
+        raw = call_llm_raw(messages)
+        return parse_llm_response(raw)
+    except Exception as e:
+        sys.stderr.write(f"Raw HTTP LLM failed: {e}\n")
+
+    # Try OpenAI SDK as backup
+    if _sdk_client is not None:
+        try:
+            response = _sdk_client.chat.completions.create(
+                model=MODEL_NAME,
+                max_tokens=256,
+                messages=messages,
+                temperature=0.0,
+            )
+            raw = response.choices[0].message.content.strip()
+            return parse_llm_response(raw)
+        except Exception as e:
+            sys.stderr.write(f"SDK LLM failed: {e}\n")
+
+    # Final fallback
     return get_rule_based_action(obs)
 
 
@@ -237,6 +275,7 @@ def main():
     print(f"# Email Triage OpenEnv — Baseline Inference", flush=True)
     print(f"# Model: {MODEL_NAME}", flush=True)
     print(f"# API Base: {API_BASE_URL}", flush=True)
+    print(f"# API Base Normalized: {API_BASE_URL_NORMALIZED}", flush=True)
     print(f"# Env URL: {ENV_BASE_URL}", flush=True)
     print("", flush=True)
 
