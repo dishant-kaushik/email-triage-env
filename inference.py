@@ -8,11 +8,12 @@ import sys
 import traceback
 
 import requests
+from openai import OpenAI
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.getenv("HF_TOKEN", "")
-ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN", "sk-placeholder")
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+ENV_BASE_URL = os.environ.get("ENV_BASE_URL", "http://localhost:7860")
 
 BENCHMARK_NAME = "email-triage-env"
 SUCCESS_THRESHOLD = 0.5
@@ -23,15 +24,10 @@ ALL_TASK_IDS = [
     "full_inbox_management",
 ]
 
-try:
-    from openai import OpenAI
-    client = OpenAI(
-        api_key=HF_TOKEN if HF_TOKEN else "sk-placeholder",
-        base_url=API_BASE_URL,
-    )
-except Exception as e:
-    print(f"# Warning: OpenAI client init failed: {e}", flush=True)
-    client = None
+client = OpenAI(
+    api_key=API_KEY,
+    base_url=API_BASE_URL,
+)
 
 
 def env_reset(task_id, seed=42):
@@ -52,12 +48,17 @@ def env_state():
     return resp.json()
 
 
-SYSTEM_PROMPT = """You are an expert email triage agent. Respond ONLY with a valid JSON action object.
+SYSTEM_PROMPT = """You are an expert email triage agent. Respond ONLY with a valid JSON action object and nothing else.
 Action format: {"action_type": "<type>", "email_id": "<id or null>", "value": "<value or null>"}
 Valid action_types: classify, prioritize, label, reply, archive, flag, skip, done
 Valid categories: spam, urgent, normal, newsletter, finance, hr, tech_support, social
 Valid priorities: high, medium, low
-Valid labels: action_required, fyi, waiting, resolved, duplicate, archived"""
+Valid labels: action_required, fyi, waiting, resolved, duplicate, archived
+Rules:
+- classify each email first before other actions
+- urgent emails get high priority and action_required label
+- spam/newsletter emails get low priority and archived label
+- call done when all emails are handled"""
 
 
 def get_rule_based_action(obs):
@@ -93,24 +94,13 @@ def get_rule_based_action(obs):
         if not email.get("flagged") and email.get("category") == "urgent":
             return {"action_type": "flag", "email_id": eid, "value": None}
         if email.get("reply_draft") is None and email.get("category") == "urgent":
-            subj = email.get("subject", "").lower()
-            if "board" in subj or "slides" in subj:
-                reply = "Hi, I will prepare the Q1 board presentation slides and send the deck by 6pm for the board meeting."
-            elif "deploy" in subj or "incident" in subj:
-                reply = "Acknowledged. Initiating rollback for the production deployment incident immediately."
-            elif "invoice" in subj or "payment" in subj:
-                reply = "Thank you for the invoice reminder. I will confirm payment and billing status immediately."
-            else:
-                reply = "Thank you for reaching out. I will action this request promptly."
-            return {"action_type": "reply", "email_id": eid, "value": reply}
+            return {"action_type": "reply", "email_id": eid, "value": "Thank you for reaching out. I will action this request promptly."}
         if not email.get("archived") and email.get("category") in ("spam", "newsletter"):
             return {"action_type": "archive", "email_id": eid, "value": None}
     return {"action_type": "done", "email_id": None, "value": None}
 
 
 def get_agent_action(obs):
-    if client is None or not HF_TOKEN:
-        return get_rule_based_action(obs)
     try:
         inbox = obs.get("inbox", [])
         task_info = obs.get("task_info", {})
@@ -122,11 +112,22 @@ def get_agent_action(obs):
             "actions_taken": task_info.get("actions_taken", []),
             "step": obs.get("step_count"),
             "max_steps": obs.get("max_steps"),
-            "inbox": [{"id": e["id"], "subject": e["subject"], "sender": e["sender_name"], "body": e["body"][:200], "category": e.get("category"), "priority": e.get("priority"), "label": e.get("label")} for e in inbox],
+            "inbox": [
+                {
+                    "id": e["id"],
+                    "subject": e["subject"],
+                    "sender": e["sender_name"],
+                    "body": e["body"][:200],
+                    "category": e.get("category"),
+                    "priority": e.get("priority"),
+                    "label": e.get("label"),
+                }
+                for e in inbox
+            ],
         }
         response = client.chat.completions.create(
             model=MODEL_NAME,
-            max_tokens=512,
+            max_tokens=256,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": json.dumps(prompt_data)},
