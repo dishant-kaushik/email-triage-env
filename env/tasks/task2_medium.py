@@ -27,7 +27,7 @@ class Task2Medium:
 
     def step(self, action: Action):
         if action.action_type == "done":
-            return Reward(value=self._grade(), reason="Episode ended."), True, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Episode ended."), True, {}
         eid = action.email_id
         if eid and eid not in self.GROUND_TRUTH:
             return Reward(value=0.001, cumulative=self._grade(), reason=f"Unknown email: {eid}"), False, {}
@@ -37,13 +37,13 @@ class Task2Medium:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already prioritized."), False, {}
             ok = action.value == gt.get("priority")
             self.priorities[eid] = ok
-            return Reward(value=self._grade(), reason="Priority set."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Priority set."), False, {}
         if action.action_type == "label":
             if eid in self.labels:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already labeled."), False, {}
             ok = action.value == gt.get("label")
             self.labels[eid] = ok
-            return Reward(value=self._grade(), reason="Label set."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Label set."), False, {}
         if action.action_type == "reply":
             if eid not in self.REPLY_EMAILS:
                 return Reward(value=0.001, cumulative=self._grade(), reason="No reply needed."), False, {}
@@ -51,7 +51,7 @@ class Task2Medium:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already replied."), False, {}
             ok = bool(action.value and len(action.value.strip()) > 20)
             self.replies[eid] = ok
-            return Reward(value=self._grade(), reason="Reply recorded."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Reply recorded."), False, {}
         return Reward(value=0.001, cumulative=self._grade(), reason="Unknown action."), False, {}
 
     def _grade(self) -> float:

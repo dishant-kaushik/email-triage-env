@@ -34,7 +34,7 @@ class Task3Hard:
 
     def step(self, action: Action):
         if action.action_type == "done":
-            return Reward(value=self._grade(), reason="Episode ended."), True, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Episode ended."), True, {}
         eid = action.email_id
         if eid and eid not in self.GROUND_TRUTH:
             return Reward(value=0.001, cumulative=self._grade(), reason=f"Unknown email: {eid}"), False, {}
@@ -44,25 +44,25 @@ class Task3Hard:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already classified."), False, {}
             ok = action.value == gt.get("category")
             self.categories[eid] = ok
-            return Reward(value=self._grade(), reason="Classified."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Classified."), False, {}
         if action.action_type == "prioritize":
             if eid in self.priorities:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already prioritized."), False, {}
             ok = action.value == gt.get("priority")
             self.priorities[eid] = ok
-            return Reward(value=self._grade(), reason="Priority set."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Priority set."), False, {}
         if action.action_type == "label":
             if eid in self.labels:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already labeled."), False, {}
             ok = action.value == gt.get("label")
             self.labels[eid] = ok
-            return Reward(value=self._grade(), reason="Labeled."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Labeled."), False, {}
         if action.action_type == "flag":
             if eid in self.flags:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already flagged."), False, {}
             ok = gt.get("flag", False)
             self.flags[eid] = ok
-            return Reward(value=self._grade(), reason="Flagged."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Flagged."), False, {}
         if action.action_type == "reply":
             if not gt.get("reply", False):
                 return Reward(value=0.001, cumulative=self._grade(), reason="No reply needed."), False, {}
@@ -70,13 +70,13 @@ class Task3Hard:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already replied."), False, {}
             ok = bool(action.value and len(action.value.strip()) > 20)
             self.replies[eid] = ok
-            return Reward(value=self._grade(), reason="Reply recorded."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Reply recorded."), False, {}
         if action.action_type == "archive":
             if eid in self.archives:
                 return Reward(value=0.001, cumulative=self._grade(), reason="Already archived."), False, {}
             ok = gt.get("archive", False)
             self.archives[eid] = ok
-            return Reward(value=self._grade(), reason="Archived."), False, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Archived."), False, {}
         if action.action_type == "skip":
             return Reward(value=0.001, cumulative=self._grade(), reason="Skipped."), False, {}
         return Reward(value=0.001, cumulative=self._grade(), reason="Unknown action."), False, {}
