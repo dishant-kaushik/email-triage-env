@@ -16,7 +16,7 @@ class Task1Easy:
         "t1-e003": "newsletter",
     }
 
-    def __init__(self, emails: List[Email]):
+    def __init__(self, emails: List[Email], seed: int = 42):
         self.emails = {e.id: e for e in emails}
         self.results: Dict[str, bool] = {}
 

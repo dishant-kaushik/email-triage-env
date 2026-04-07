@@ -23,7 +23,7 @@ class Task3Hard:
         "t3-e010": {"category": "urgent",     "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
     }
 
-    def __init__(self, emails: List[Email]):
+    def __init__(self, emails: List[Email], seed: int = 42):
         self.emails = {e.id: e for e in emails}
         self.categories: Dict[str, bool] = {}
         self.priorities: Dict[str, bool] = {}

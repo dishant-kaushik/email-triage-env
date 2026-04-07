@@ -19,7 +19,7 @@ class Task2Medium:
     }
     REPLY_EMAILS = {"t2-e001", "t2-e003"}
 
-    def __init__(self, emails: List[Email]):
+    def __init__(self, emails: List[Email], seed: int = 42):
         self.emails = {e.id: e for e in emails}
         self.priorities: Dict[str, bool] = {}
         self.labels: Dict[str, bool] = {}
