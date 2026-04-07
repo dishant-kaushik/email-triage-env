@@ -8,7 +8,6 @@ import sys
 import traceback
 
 import requests
-from openai import OpenAI
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN", "sk-placeholder")
@@ -24,20 +23,33 @@ ALL_TASK_IDS = [
     "full_inbox_management",
 ]
 
-client = OpenAI(
-    api_key=API_KEY,
-    base_url=API_BASE_URL,
-)
+try:
+    from openai import OpenAI
+    client = OpenAI(
+        api_key=API_KEY,
+        base_url=API_BASE_URL,
+    )
+except Exception as e:
+    sys.stderr.write(f"OpenAI client init warning: {e}\n")
+    client = None
 
 
 def env_reset(task_id, seed=42):
-    resp = requests.post(f"{ENV_BASE_URL}/reset", json={"task_id": task_id, "seed": seed}, timeout=30)
+    resp = requests.post(
+        f"{ENV_BASE_URL}/reset",
+        json={"task_id": task_id, "seed": seed},
+        timeout=30,
+    )
     resp.raise_for_status()
     return resp.json()
 
 
 def env_step(action):
-    resp = requests.post(f"{ENV_BASE_URL}/step", json={"action": action}, timeout=30)
+    resp = requests.post(
+        f"{ENV_BASE_URL}/step",
+        json={"action": action},
+        timeout=30,
+    )
     resp.raise_for_status()
     return resp.json()
 
@@ -100,7 +112,9 @@ def get_rule_based_action(obs):
     return {"action_type": "done", "email_id": None, "value": None}
 
 
-def get_agent_action(obs):
+def call_llm(obs):
+    if client is None:
+        return None
     try:
         inbox = obs.get("inbox", [])
         task_info = obs.get("task_info", {})
@@ -142,8 +156,15 @@ def get_agent_action(obs):
             raw = raw.strip()
         return json.loads(raw)
     except Exception as e:
-        print(f"# LLM call failed: {e}, using fallback", flush=True)
-        return get_rule_based_action(obs)
+        sys.stderr.write(f"LLM call failed: {e}\n")
+        return None
+
+
+def get_agent_action(obs):
+    action = call_llm(obs)
+    if action is not None:
+        return action
+    return get_rule_based_action(obs)
 
 
 def run_episode(task_id, max_steps=40, seed=42):
@@ -181,7 +202,11 @@ def run_episode(task_id, max_steps=40, seed=42):
             steps += 1
             rewards.append(reward_val)
             error_str = last_error if last_error else "null"
-            print(f"[STEP] step={steps} action={action_str} reward={reward_val:.2f} done={'true' if done else 'false'} error={error_str}", flush=True)
+            print(
+                f"[STEP] step={steps} action={action_str} reward={reward_val:.2f} "
+                f"done={'true' if done else 'false'} error={error_str}",
+                flush=True,
+            )
 
         try:
             state = env_state()
@@ -191,12 +216,21 @@ def run_episode(task_id, max_steps=40, seed=42):
             success = sum(rewards) > 0
 
     except Exception as e:
-        traceback.print_exc(file=sys.stderr)
+        sys.stderr.write(traceback.format_exc())
 
     rewards_str = ",".join(f"{r:.2f}" for r in rewards) if rewards else "0.00"
-    print(f"[END] success={'true' if success else 'false'} steps={steps} rewards={rewards_str}", flush=True)
+    print(
+        f"[END] success={'true' if success else 'false'} steps={steps} rewards={rewards_str}",
+        flush=True,
+    )
 
-    return {"task_id": task_id, "success": success, "steps": steps, "rewards": rewards, "total_reward": sum(rewards)}
+    return {
+        "task_id": task_id,
+        "success": success,
+        "steps": steps,
+        "rewards": rewards,
+        "total_reward": sum(rewards),
+    }
 
 
 def main():
@@ -212,13 +246,24 @@ def main():
             result = run_episode(task_id)
             results.append(result)
         except Exception as e:
+            sys.stderr.write(f"Episode failed: {e}\n")
             print(f"[END] success=false steps=0 rewards=0.00", flush=True)
-            results.append({"task_id": task_id, "success": False, "steps": 0, "rewards": [], "total_reward": 0.0})
+            results.append({
+                "task_id": task_id,
+                "success": False,
+                "steps": 0,
+                "rewards": [],
+                "total_reward": 0.0,
+            })
         print("", flush=True)
 
     print("# ---- SUMMARY ----", flush=True)
     for r in results:
-        print(f"# {r['task_id']}: success={r['success']} steps={r['steps']} total_reward={r['total_reward']:.2f}", flush=True)
+        print(
+            f"# {r['task_id']}: success={r['success']} steps={r['steps']} "
+            f"total_reward={r['total_reward']:.2f}",
+            flush=True,
+        )
     print(f"# Tasks passed: {sum(1 for r in results if r['success'])}/{len(results)}", flush=True)
 
 
