@@ -22,20 +22,20 @@ class Task1Easy:
 
     def step(self, action: Action):
         if action.action_type == "done":
-            return Reward(value=self._grade(), reason="Episode ended."), True, {}
+            return Reward(value=self._grade(), cumulative=self._grade(), reason="Episode ended."), True, {}
         if action.action_type != "classify":
-            return Reward(value=0.001, reason="Use classify."), False, {}
+            return Reward(value=0.001, cumulative=self._grade(), reason="Use classify."), False, {}
         eid = action.email_id
         if eid not in self.GROUND_TRUTH:
-            return Reward(value=0.001, reason=f"Unknown email: {eid}"), False, {}
+            return Reward(value=0.001, cumulative=self._grade(), reason=f"Unknown email: {eid}"), False, {}
         if eid in self.results:
-            return Reward(value=0.001, reason="Already classified."), False, {}
+            return Reward(value=0.001, cumulative=self._grade(), reason="Already classified."), False, {}
         correct = self.GROUND_TRUTH[eid]
         ok = action.value == correct
         self.results[eid] = ok
         done = len(self.results) == len(self.GROUND_TRUTH)
         msg = f"Correct! {eid} is {correct}." if ok else f"Wrong. Expected {correct}."
-        return Reward(value=self._grade(), reason=msg), done, {}
+        return Reward(value=self._grade(), cumulative=self._grade(), reason=msg), done, {}
 
     def _grade(self) -> float:
         if not self.results:

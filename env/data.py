@@ -337,3 +337,14 @@ TASK3_REPLY_KEYWORDS = {
     "t3-e005": ["rollback", "deploy", "production", "incident", "payment-service"],
     "t3-e010": ["design", "review", "alice", "unblock", "today"],
 }
+
+
+def get_task_emails(task_id):
+    from env.models import Email
+    mapping = {
+        "classify_emails": TASK1_EMAILS,
+        "prioritize_and_label": TASK2_EMAILS,
+        "full_inbox_management": TASK3_EMAILS,
+    }
+    raw = mapping.get(task_id, [])
+    return [Email(**e) for e in raw]
