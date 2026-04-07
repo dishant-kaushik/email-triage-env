@@ -10,14 +10,14 @@ from typing import Any, Dict, Optional, Tuple
 from env.models import (
     Action, Observation, Reward, StepResponse, StateResponse
 )
-from env.tasks.task1_easy import Task1ClassifyEmails
-from env.tasks.task2_medium import Task2PrioritizeAndLabel
-from env.tasks.task3_hard import Task3FullInboxManagement
+from env.tasks.task1_easy import Task1Easy
+from env.tasks.task2_medium import Task2Medium
+from env.tasks.task3_hard import Task3Hard
 
 TASK_REGISTRY = {
-    Task1ClassifyEmails.TASK_ID: Task1ClassifyEmails,
-    Task2PrioritizeAndLabel.TASK_ID: Task2PrioritizeAndLabel,
-    Task3FullInboxManagement.TASK_ID: Task3FullInboxManagement,
+    Task1Easy.TASK_ID: Task1Easy,
+    Task2Medium.TASK_ID: Task2Medium,
+    Task3Hard.TASK_ID: Task3Hard,
 }
 
 ALL_TASK_IDS = list(TASK_REGISTRY.keys())
