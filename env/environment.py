@@ -1,7 +1,35 @@
-from typing import Dict, Any, Tuple
-from pydantic import BaseModel
-from env.models import Observation, Action, Reward, Email
+from typing import Dict, Any, Tuple, Optional
+from pydantic import BaseModel, Field
+from datetime import datetime
 from env.tasks.task1easy import Task1Easy
+
+# Minimal Email model matching existing models.py
+class Email(BaseModel):
+    id: str
+    subject: str
+    sender: str
+    sender_name: str
+    body: str
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    category: Optional[str] = None
+
+class Observation(BaseModel):
+    inbox: list[Email]
+    current_task: str
+    step_count: int = 0
+    max_steps: int = 10
+    task_info: dict
+    scores_so_far: float = 0.0
+    done: bool = False
+
+class Action(BaseModel):
+    action_type: str
+    email_id: str
+    value: str
+
+class Reward(BaseModel):
+    value: float
+    reason: str
 
 TASK_REGISTRY = {"classifyemails": Task1Easy}
 ALL_TASK_IDS = ["classifyemails"]
