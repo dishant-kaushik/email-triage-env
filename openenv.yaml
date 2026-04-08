@@ -63,10 +63,10 @@ action_space:
 
 reward_space:
   type: float
-  range: [0.0, 1.0]
+  range: (0.0, 1.0)
   description: >
     Per-step partial reward based on correctness of action.
-    Cumulative episode reward normalized to [0.0, 1.0].
+    Cumulative episode reward strictly between 0.0 and 1.0.
 
 api:
   reset: POST /reset
