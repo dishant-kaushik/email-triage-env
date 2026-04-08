@@ -165,16 +165,17 @@ def get_rule_based_action(obs):
 
 
 def get_agent_action(obs):
+    # Always try LLM first - this is required to register proxy usage
     messages = build_messages(obs)
-
-    # Try raw HTTP first (most reliable — no SDK init issues)
+    
+    # Try raw HTTP (most reliable)
     try:
         raw = call_llm_raw(messages)
         return parse_llm_response(raw)
     except Exception as e:
         sys.stderr.write(f"Raw HTTP LLM failed: {e}\n")
-
-    # Try OpenAI SDK as backup
+    
+    # Try OpenAI SDK
     if _sdk_client is not None:
         try:
             response = _sdk_client.chat.completions.create(
@@ -187,8 +188,8 @@ def get_agent_action(obs):
             return parse_llm_response(raw)
         except Exception as e:
             sys.stderr.write(f"SDK LLM failed: {e}\n")
-
-    # Final fallback
+    
+    # Only use rule-based if both LLM methods fail
     return get_rule_based_action(obs)
 
 
