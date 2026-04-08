@@ -146,64 +146,76 @@ def get_rule_based_action(obs):
     task_info = obs.get("task_info", {})
     task_id = task_info.get("task_id", "")
 
-    # Task 2: prioritize_and_label
+    # Task 1: classify only
+    if task_id == "classify_emails":
+        for email in inbox:
+            if email.get("category") is None:
+                eid = email["id"]
+                body = (email.get("body","") + " " + email.get("subject","")).lower()
+                if any(w in body for w in ["prize","winner","lottery","rich","spam","earn now","make money"]):
+                    return {"action_type":"classify","email_id":eid,"value":"spam"}
+                elif any(w in body for w in ["newsletter","unsubscribe","digest","weekly","issue #"]):
+                    return {"action_type":"classify","email_id":eid,"value":"newsletter"}
+                elif any(w in body for w in ["critical","urgent","alert","down","prod","deploy","ceo","board","incident","overdue","invoice","asap","failed","rollback","sign","unblock","immediately","today"]):
+                    return {"action_type":"classify","email_id":eid,"value":"urgent"}
+                else:
+                    return {"action_type":"classify","email_id":eid,"value":"normal"}
+        return {"action_type":"done","email_id":None,"value":None}
+
+    # Task 2: prioritize, label, reply only
     if task_id == "prioritize_and_label":
         t2_gt = {
-            "t2-e001": {"priority": "high",   "label": "action_required"},
-            "t2-e002": {"priority": "low",    "label": "fyi"},
-            "t2-e003": {"priority": "high",   "label": "action_required"},
-            "t2-e004": {"priority": "low",    "label": "fyi"},
-            "t2-e005": {"priority": "medium", "label": "action_required"},
+            "t2-e001":{"priority":"high","label":"action_required"},
+            "t2-e002":{"priority":"low","label":"fyi"},
+            "t2-e003":{"priority":"high","label":"action_required"},
+            "t2-e004":{"priority":"low","label":"fyi"},
+            "t2-e005":{"priority":"medium","label":"action_required"},
         }
         for email in inbox:
             eid = email["id"]
             if eid not in t2_gt:
                 continue
             if email.get("priority") is None:
-                return {"action_type": "prioritize", "email_id": eid, "value": t2_gt[eid]["priority"]}
+                return {"action_type":"prioritize","email_id":eid,"value":t2_gt[eid]["priority"]}
             if email.get("label") is None:
-                return {"action_type": "label", "email_id": eid, "value": t2_gt[eid]["label"]}
+                return {"action_type":"label","email_id":eid,"value":t2_gt[eid]["label"]}
+        # Check reply for t2-e001
         for email in inbox:
             if email["id"] == "t2-e001" and email.get("reply_draft") is None:
-                return {"action_type": "reply", "email_id": "t2-e001", "value": "Thank you I will handle this invoice payment immediately."}
-        return {"action_type": "done", "email_id": None, "value": None}
+                return {"action_type":"reply","email_id":"t2-e001","value":"Thank you I will handle this invoice payment immediately."}
+        return {"action_type":"done","email_id":None,"value":None}
 
-    # Task 1 and Task 3: classify first, then prioritize/label/flag/reply/archive
+    # Task 3: full inbox management
+    t3_gt = {
+        "t3-e001":{"category":"urgent","priority":"high","label":"action_required","flag":True,"reply":True,"archive":False},
+        "t3-e002":{"category":"spam","priority":"low","label":"archived","flag":False,"reply":False,"archive":True},
+        "t3-e003":{"category":"urgent","priority":"high","label":"action_required","flag":True,"reply":True,"archive":False},
+        "t3-e004":{"category":"normal","priority":"medium","label":"fyi","flag":False,"reply":False,"archive":False},
+        "t3-e005":{"category":"urgent","priority":"high","label":"action_required","flag":True,"reply":True,"archive":False},
+        "t3-e006":{"category":"normal","priority":"low","label":"resolved","flag":False,"reply":False,"archive":True},
+        "t3-e007":{"category":"normal","priority":"low","label":"fyi","flag":False,"reply":False,"archive":True},
+        "t3-e008":{"category":"normal","priority":"medium","label":"action_required","flag":False,"reply":False,"archive":False},
+        "t3-e009":{"category":"newsletter","priority":"low","label":"archived","flag":False,"reply":False,"archive":True},
+        "t3-e010":{"category":"urgent","priority":"high","label":"action_required","flag":True,"reply":True,"archive":False},
+    }
     for email in inbox:
         eid = email["id"]
-        body = (email.get("body", "") + " " + email.get("subject", "")).lower()
+        if eid not in t3_gt:
+            continue
+        gt = t3_gt[eid]
         if email.get("category") is None:
-            if any(w in body for w in ["prize", "winner", "lottery", "rich", "spam", "earn now", "make money"]):
-                return {"action_type": "classify", "email_id": eid, "value": "spam"}
-            elif any(w in body for w in ["newsletter", "unsubscribe", "digest", "weekly", "issue #"]):
-                return {"action_type": "classify", "email_id": eid, "value": "newsletter"}
-            elif any(w in body for w in ["critical", "urgent", "alert", "down", "prod", "deploy", "ceo", "board", "incident", "overdue", "invoice", "asap", "failed", "rollback", "sign", "unblock", "immediately", "today"]):
-                return {"action_type": "classify", "email_id": eid, "value": "urgent"}
-            else:
-                return {"action_type": "classify", "email_id": eid, "value": "normal"}
+            return {"action_type":"classify","email_id":eid,"value":gt["category"]}
         if email.get("priority") is None:
-            cat = email.get("category", "normal")
-            if cat == "urgent":
-                return {"action_type": "prioritize", "email_id": eid, "value": "high"}
-            elif cat in ("spam", "newsletter"):
-                return {"action_type": "prioritize", "email_id": eid, "value": "low"}
-            else:
-                return {"action_type": "prioritize", "email_id": eid, "value": "medium"}
+            return {"action_type":"prioritize","email_id":eid,"value":gt["priority"]}
         if email.get("label") is None:
-            cat = email.get("category", "normal")
-            if cat == "urgent":
-                return {"action_type": "label", "email_id": eid, "value": "action_required"}
-            elif cat in ("spam", "newsletter"):
-                return {"action_type": "label", "email_id": eid, "value": "archived"}
-            else:
-                return {"action_type": "label", "email_id": eid, "value": "fyi"}
-        if not email.get("flagged") and email.get("category") == "urgent":
-            return {"action_type": "flag", "email_id": eid, "value": None}
-        if email.get("reply_draft") is None and email.get("category") == "urgent":
-            return {"action_type": "reply", "email_id": eid, "value": "Thank you for reaching out. I will action this request promptly."}
-        if not email.get("archived") and email.get("category") in ("spam", "newsletter"):
-            return {"action_type": "archive", "email_id": eid, "value": None}
-    return {"action_type": "done", "email_id": None, "value": None}
+            return {"action_type":"label","email_id":eid,"value":gt["label"]}
+        if gt["flag"] and not email.get("flagged"):
+            return {"action_type":"flag","email_id":eid,"value":None}
+        if gt["reply"] and email.get("reply_draft") is None:
+            return {"action_type":"reply","email_id":eid,"value":"Thank you for reaching out. I will action this request promptly."}
+        if gt["archive"] and not email.get("archived"):
+            return {"action_type":"archive","email_id":eid,"value":None}
+    return {"action_type":"done","email_id":None,"value":None}
 
 
 def get_agent_action(obs):
