@@ -39,30 +39,14 @@ class Task2Medium:
         self.step_count += 1
         g = self._grade()
         if action.action_type == "done":
-<<<<<<< HEAD
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Episode ended."), True, {}
-=======
             self.done = True
             return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.0), True
->>>>>>> b5e7e8b (Fix all tasks: add reset/state/grade, fix Reward fields, fix Observation return)
         eid = action.email_id
         if not eid or eid not in self.GROUND_TRUTH:
             return self._obs(error=f"Unknown email: {eid}"), Reward(value=0.001, cumulative=g, reason=f"Unknown email: {eid}", breakdown={}, penalty=0.0), False
         gt = self.GROUND_TRUTH[eid]
         if action.action_type == "prioritize":
             if eid in self.priorities:
-<<<<<<< HEAD
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already prioritized."), False, {}
-            ok = action.value == gt.get("priority")
-            self.priorities[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Priority set."), False, {}
-        if action.action_type == "label":
-            if eid in self.labels:
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already labeled."), False, {}
-            ok = action.value == gt.get("label")
-            self.labels[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Label set."), False, {}
-=======
                 return self._obs(error="Already prioritized."), Reward(value=0.001, cumulative=g, reason="Already prioritized.", breakdown={}, penalty=0.0), False
             self.priorities[eid] = action.value == gt["priority"]
             g = self._grade()
@@ -73,18 +57,10 @@ class Task2Medium:
             self.labels[eid] = action.value == gt["label"]
             g = self._grade()
             return self._obs(result="Label set."), Reward(value=g, cumulative=g, reason="Label set.", breakdown={"label": g}, penalty=0.0), False
->>>>>>> b5e7e8b (Fix all tasks: add reset/state/grade, fix Reward fields, fix Observation return)
         if action.action_type == "reply":
             if eid not in self.REPLY_EMAILS:
                 return self._obs(error="No reply needed."), Reward(value=0.001, cumulative=g, reason="No reply needed.", breakdown={}, penalty=0.0), False
             if eid in self.replies:
-<<<<<<< HEAD
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already replied."), False, {}
-            ok = bool(action.value and len(action.value.strip()) > 20)
-            self.replies[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Reply recorded."), False, {}
-        return Reward(value=0.001, cumulative=self._grade(), reason="Unknown action."), False, {}
-=======
                 return self._obs(error="Already replied."), Reward(value=0.001, cumulative=g, reason="Already replied.", breakdown={}, penalty=0.0), False
             self.replies[eid] = bool(action.value and len(action.value.strip()) > 20)
             g = self._grade()
@@ -106,7 +82,6 @@ class Task2Medium:
             ),
             last_action_result=result, last_action_error=error, done=self.done,
         )
->>>>>>> b5e7e8b (Fix all tasks: add reset/state/grade, fix Reward fields, fix Observation return)
 
     def _grade(self) -> float:
         total = len(self.GROUND_TRUTH) * 2 + len(self.REPLY_EMAILS)

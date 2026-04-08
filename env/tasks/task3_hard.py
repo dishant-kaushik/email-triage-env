@@ -10,16 +10,16 @@ class Task3Hard:
     DESCRIPTION = "Manage 10 emails: classify, prioritize, label, flag, reply, archive."
 
     GROUND_TRUTH = {
-        "t3-e001": {"category": "urgent",      "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
-        "t3-e002": {"category": "spam",        "priority": "low",    "label": "archived",        "flag": False, "reply": False, "archive": True},
-        "t3-e003": {"category": "urgent",      "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
-        "t3-e004": {"category": "normal",      "priority": "medium", "label": "fyi",             "flag": False, "reply": False, "archive": False},
-        "t3-e005": {"category": "urgent",      "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
-        "t3-e006": {"category": "normal",      "priority": "low",    "label": "resolved",        "flag": False, "reply": False, "archive": True},
-        "t3-e007": {"category": "normal",      "priority": "low",    "label": "fyi",             "flag": False, "reply": False, "archive": True},
-        "t3-e008": {"category": "normal",      "priority": "medium", "label": "action_required", "flag": False, "reply": False, "archive": False},
-        "t3-e009": {"category": "newsletter",  "priority": "low",    "label": "archived",        "flag": False, "reply": False, "archive": True},
-        "t3-e010": {"category": "urgent",      "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
+        "t3-e001": {"category": "urgent",     "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
+        "t3-e002": {"category": "spam",       "priority": "low",    "label": "archived",        "flag": False, "reply": False, "archive": True},
+        "t3-e003": {"category": "urgent",     "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
+        "t3-e004": {"category": "normal",     "priority": "medium", "label": "fyi",             "flag": False, "reply": False, "archive": False},
+        "t3-e005": {"category": "urgent",     "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
+        "t3-e006": {"category": "normal",     "priority": "low",    "label": "resolved",        "flag": False, "reply": False, "archive": True},
+        "t3-e007": {"category": "normal",     "priority": "low",    "label": "fyi",             "flag": False, "reply": False, "archive": True},
+        "t3-e008": {"category": "normal",     "priority": "medium", "label": "action_required", "flag": False, "reply": False, "archive": False},
+        "t3-e009": {"category": "newsletter", "priority": "low",    "label": "archived",        "flag": False, "reply": False, "archive": True},
+        "t3-e010": {"category": "urgent",     "priority": "high",   "label": "action_required", "flag": True,  "reply": True,  "archive": False},
     }
 
     def __init__(self, emails: List[Email], seed: int = 42):
@@ -49,42 +49,14 @@ class Task3Hard:
         self.step_count += 1
         g = self._grade()
         if action.action_type == "done":
-<<<<<<< HEAD
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Episode ended."), True, {}
-=======
             self.done = True
             return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.0), True
->>>>>>> b5e7e8b (Fix all tasks: add reset/state/grade, fix Reward fields, fix Observation return)
         eid = action.email_id
         if not eid or eid not in self.GROUND_TRUTH:
-            return self._obs(error=f"Unknown email: {eid}"), Reward(value=0.001, cumulative=g, reason=f"Unknown: {eid}", breakdown={}, penalty=0.0), False
+            return self._obs(error=f"Unknown: {eid}"), Reward(value=0.001, cumulative=g, reason=f"Unknown: {eid}", breakdown={}, penalty=0.0), False
         gt = self.GROUND_TRUTH[eid]
         if action.action_type == "classify":
             if eid in self.categories:
-<<<<<<< HEAD
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already classified."), False, {}
-            ok = action.value == gt.get("category")
-            self.categories[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Classified."), False, {}
-        if action.action_type == "prioritize":
-            if eid in self.priorities:
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already prioritized."), False, {}
-            ok = action.value == gt.get("priority")
-            self.priorities[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Priority set."), False, {}
-        if action.action_type == "label":
-            if eid in self.labels:
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already labeled."), False, {}
-            ok = action.value == gt.get("label")
-            self.labels[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Labeled."), False, {}
-        if action.action_type == "flag":
-            if eid in self.flags:
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already flagged."), False, {}
-            ok = gt.get("flag", False)
-            self.flags[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Flagged."), False, {}
-=======
                 return self._obs(error="Already classified."), Reward(value=0.001, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.0), False
             self.categories[eid] = action.value == gt["category"]
             g = self._grade()
@@ -107,23 +79,10 @@ class Task3Hard:
             self.flags[eid] = gt.get("flag", False)
             g = self._grade()
             return self._obs(result="Flagged."), Reward(value=g, cumulative=g, reason="Flagged.", breakdown={"flag": g}, penalty=0.0), False
->>>>>>> b5e7e8b (Fix all tasks: add reset/state/grade, fix Reward fields, fix Observation return)
         if action.action_type == "reply":
             if not gt.get("reply", False):
                 return self._obs(error="No reply needed."), Reward(value=0.001, cumulative=g, reason="No reply needed.", breakdown={}, penalty=0.0), False
             if eid in self.replies:
-<<<<<<< HEAD
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already replied."), False, {}
-            ok = bool(action.value and len(action.value.strip()) > 20)
-            self.replies[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Reply recorded."), False, {}
-        if action.action_type == "archive":
-            if eid in self.archives:
-                return Reward(value=0.001, cumulative=self._grade(), reason="Already archived."), False, {}
-            ok = gt.get("archive", False)
-            self.archives[eid] = ok
-            return Reward(value=self._grade(), cumulative=self._grade(), reason="Archived."), False, {}
-=======
                 return self._obs(error="Already replied."), Reward(value=0.001, cumulative=g, reason="Already replied.", breakdown={}, penalty=0.0), False
             self.replies[eid] = bool(action.value and len(action.value.strip()) > 20)
             g = self._grade()
@@ -134,7 +93,6 @@ class Task3Hard:
             self.archives[eid] = gt.get("archive", False)
             g = self._grade()
             return self._obs(result="Archived."), Reward(value=g, cumulative=g, reason="Archived.", breakdown={"archive": g}, penalty=0.0), False
->>>>>>> b5e7e8b (Fix all tasks: add reset/state/grade, fix Reward fields, fix Observation return)
         if action.action_type == "skip":
             return self._obs(), Reward(value=0.001, cumulative=g, reason="Skipped.", breakdown={}, penalty=0.0), False
         return self._obs(error="Unknown action."), Reward(value=0.001, cumulative=g, reason="Unknown action.", breakdown={}, penalty=0.0), False
