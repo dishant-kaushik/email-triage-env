@@ -124,7 +124,7 @@ class Task3Hard:
                   sum(1 for v in self.flags.values() if v) +
                   sum(1 for v in self.replies.values() if v) +
                   sum(1 for v in self.archives.values() if v))
-        return max(0.01, min(0.99, scored / total if total else 0))
+        return round(min(0.95, max(0.05, 0.05 + 0.90 * (scored / total if total else 0))), 4)
 
     def grade(self) -> float:
         return self._grade()

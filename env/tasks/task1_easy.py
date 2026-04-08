@@ -66,10 +66,9 @@ class Task1Easy:
         )
 
     def _grade(self) -> float:
-        if not self.results:
-            return 0.001
-        raw = sum(1 for v in self.results.values() if v) / len(self.GROUND_TRUTH)
-        return 0.05 + 0.90 * (scored / total if total else 0)
+        total = len(self.GROUND_TRUTH)
+        scored = sum(1 for v in self.results.values() if v)
+        return round(min(0.95, max(0.05, 0.05 + 0.90 * (scored / total if total else 0))), 4)
 
     def grade(self) -> float:
         return self._grade()
