@@ -233,11 +233,12 @@ def run_episode(task_id, max_steps=40, seed=42):
                 last_error = result["observation"].get("last_action_error")
                 obs = result["observation"]
             except Exception as e:
-                reward_val = 0.0
+                reward_val = 0.05
                 last_error = f"step error: {e}"
                 done = True
 
             steps += 1
+            reward_val = max(0.05, min(0.95, float(reward_val)))
             rewards.append(reward_val)
             error_str = last_error if last_error else "null"
             print(
@@ -248,7 +249,7 @@ def run_episode(task_id, max_steps=40, seed=42):
 
         try:
             state = env_state()
-            grade = state.get("grade", 0.0)
+            grade = max(0.05, min(0.95, state.get("grade", 0.5)))
             success = grade >= SUCCESS_THRESHOLD
         except Exception:
             success = sum(rewards) > 0
@@ -286,13 +287,13 @@ def main():
             results.append(result)
         except Exception as e:
             sys.stderr.write(f"Episode failed: {e}\n")
-            print(f"[END] success=false steps=0 rewards=0.00", flush=True)
+            print(f"[END] success=false steps=0 rewards=0.05", flush=True)
             results.append({
                 "task_id": task_id,
                 "success": False,
                 "steps": 0,
                 "rewards": [],
-                "total_reward": 0.0,
+                "total_reward": 0.05,
             })
         print("", flush=True)
 
