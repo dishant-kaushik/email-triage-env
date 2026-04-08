@@ -131,8 +131,8 @@ class Reward(BaseModel):
     Per-step reward signal with breakdown for transparency.
     Provides partial credit signal at every step (not just episode end).
     """
-    value: float = Field(..., ge=0.0, le=1.0, description="Normalized reward for this step [0.0, 1.0]")
-    cumulative: float = Field(..., ge=0.0, le=1.0, description="Cumulative episode reward so far")
+    value: float = Field(..., gt=0.0, lt=1.0, description="Normalized reward for this step (0.0, 1.0)")
+    cumulative: float = Field(..., gt=0.0, lt=1.0, description="Cumulative episode reward so far")
     breakdown: Dict[str, float] = Field(
         default_factory=dict,
         description="Per-objective score components"
