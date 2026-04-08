@@ -138,7 +138,7 @@ class Reward(BaseModel):
         description="Per-objective score components"
     )
     reason: str = Field(..., description="Human-readable explanation of this reward")
-    penalty: float = Field(default=0.0, description="Penalty applied (e.g. for wasted steps or errors)")
+    penalty: float = Field(default=0.01, description="Penalty applied (e.g. for wasted steps or errors)")
 
 
 # ---------------------------------------------------------------------------

@@ -29,17 +29,17 @@ class Task1Easy:
         if action.action_type == "done":
             self.done = True
             g = self._grade()
-            return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.0), True
+            return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.01), True
         if action.action_type != "classify":
             g = self._grade()
-            return self._obs(error="Use action_type='classify'."), Reward(value=0.05, cumulative=g, reason="Use action_type='classify'.", breakdown={}, penalty=0.0), False
+            return self._obs(error="Use action_type='classify'."), Reward(value=0.05, cumulative=g, reason="Use action_type='classify'.", breakdown={}, penalty=0.01), False
         eid = action.email_id
         if eid not in self.GROUND_TRUTH:
             g = self._grade()
-            return self._obs(error=f"Unknown email: {eid}"), Reward(value=0.05, cumulative=g, reason=f"Unknown email: {eid}", breakdown={}, penalty=0.0), False
+            return self._obs(error=f"Unknown email: {eid}"), Reward(value=0.05, cumulative=g, reason=f"Unknown email: {eid}", breakdown={}, penalty=0.01), False
         if eid in self.results:
             g = self._grade()
-            return self._obs(error="Already classified."), Reward(value=0.05, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.0), False
+            return self._obs(error="Already classified."), Reward(value=0.05, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.01), False
         correct = self.GROUND_TRUTH[eid]
         ok = action.value == correct
         self.results[eid] = ok
@@ -47,7 +47,7 @@ class Task1Easy:
         self.done = done
         g = self._grade()
         msg = f"Correct! {eid} is {correct}." if ok else f"Wrong. Expected {correct}."
-        return self._obs(result=msg), Reward(value=g, cumulative=g, reason=msg, breakdown={"classify": g}, penalty=0.0), done
+        return self._obs(result=msg), Reward(value=g, cumulative=g, reason=msg, breakdown={"classify": g}, penalty=0.01), done
 
     def _obs(self, result=None, error=None) -> Observation:
         return Observation(

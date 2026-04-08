@@ -50,52 +50,52 @@ class Task3Hard:
         g = self._grade()
         if action.action_type == "done":
             self.done = True
-            return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.0), True
+            return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.01), True
         eid = action.email_id
         if not eid or eid not in self.GROUND_TRUTH:
-            return self._obs(error=f"Unknown: {eid}"), Reward(value=0.05, cumulative=g, reason=f"Unknown: {eid}", breakdown={}, penalty=0.0), False
+            return self._obs(error=f"Unknown: {eid}"), Reward(value=0.05, cumulative=g, reason=f"Unknown: {eid}", breakdown={}, penalty=0.01), False
         gt = self.GROUND_TRUTH[eid]
         if action.action_type == "classify":
             if eid in self.categories:
-                return self._obs(error="Already classified."), Reward(value=0.05, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.0), False
+                return self._obs(error="Already classified."), Reward(value=0.05, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.01), False
             self.categories[eid] = action.value == gt["category"]
             g = self._grade()
-            return self._obs(result="Classified."), Reward(value=g, cumulative=g, reason="Classified.", breakdown={"classify": g}, penalty=0.0), False
+            return self._obs(result="Classified."), Reward(value=g, cumulative=g, reason="Classified.", breakdown={"classify": g}, penalty=0.01), False
         if action.action_type == "prioritize":
             if eid in self.priorities:
-                return self._obs(error="Already prioritized."), Reward(value=0.05, cumulative=g, reason="Already prioritized.", breakdown={}, penalty=0.0), False
+                return self._obs(error="Already prioritized."), Reward(value=0.05, cumulative=g, reason="Already prioritized.", breakdown={}, penalty=0.01), False
             self.priorities[eid] = action.value == gt["priority"]
             g = self._grade()
-            return self._obs(result="Priority set."), Reward(value=g, cumulative=g, reason="Priority set.", breakdown={"priority": g}, penalty=0.0), False
+            return self._obs(result="Priority set."), Reward(value=g, cumulative=g, reason="Priority set.", breakdown={"priority": g}, penalty=0.01), False
         if action.action_type == "label":
             if eid in self.labels:
-                return self._obs(error="Already labeled."), Reward(value=0.05, cumulative=g, reason="Already labeled.", breakdown={}, penalty=0.0), False
+                return self._obs(error="Already labeled."), Reward(value=0.05, cumulative=g, reason="Already labeled.", breakdown={}, penalty=0.01), False
             self.labels[eid] = action.value == gt["label"]
             g = self._grade()
-            return self._obs(result="Labeled."), Reward(value=g, cumulative=g, reason="Labeled.", breakdown={"label": g}, penalty=0.0), False
+            return self._obs(result="Labeled."), Reward(value=g, cumulative=g, reason="Labeled.", breakdown={"label": g}, penalty=0.01), False
         if action.action_type == "flag":
             if eid in self.flags:
-                return self._obs(error="Already flagged."), Reward(value=0.05, cumulative=g, reason="Already flagged.", breakdown={}, penalty=0.0), False
+                return self._obs(error="Already flagged."), Reward(value=0.05, cumulative=g, reason="Already flagged.", breakdown={}, penalty=0.01), False
             self.flags[eid] = gt.get("flag", False)
             g = self._grade()
-            return self._obs(result="Flagged."), Reward(value=g, cumulative=g, reason="Flagged.", breakdown={"flag": g}, penalty=0.0), False
+            return self._obs(result="Flagged."), Reward(value=g, cumulative=g, reason="Flagged.", breakdown={"flag": g}, penalty=0.01), False
         if action.action_type == "reply":
             if not gt.get("reply", False):
-                return self._obs(error="No reply needed."), Reward(value=0.05, cumulative=g, reason="No reply needed.", breakdown={}, penalty=0.0), False
+                return self._obs(error="No reply needed."), Reward(value=0.05, cumulative=g, reason="No reply needed.", breakdown={}, penalty=0.01), False
             if eid in self.replies:
-                return self._obs(error="Already replied."), Reward(value=0.05, cumulative=g, reason="Already replied.", breakdown={}, penalty=0.0), False
+                return self._obs(error="Already replied."), Reward(value=0.05, cumulative=g, reason="Already replied.", breakdown={}, penalty=0.01), False
             self.replies[eid] = bool(action.value and len(action.value.strip()) > 20)
             g = self._grade()
-            return self._obs(result="Reply recorded."), Reward(value=g, cumulative=g, reason="Reply recorded.", breakdown={"reply": g}, penalty=0.0), False
+            return self._obs(result="Reply recorded."), Reward(value=g, cumulative=g, reason="Reply recorded.", breakdown={"reply": g}, penalty=0.01), False
         if action.action_type == "archive":
             if eid in self.archives:
-                return self._obs(error="Already archived."), Reward(value=0.05, cumulative=g, reason="Already archived.", breakdown={}, penalty=0.0), False
+                return self._obs(error="Already archived."), Reward(value=0.05, cumulative=g, reason="Already archived.", breakdown={}, penalty=0.01), False
             self.archives[eid] = gt.get("archive", False)
             g = self._grade()
-            return self._obs(result="Archived."), Reward(value=g, cumulative=g, reason="Archived.", breakdown={"archive": g}, penalty=0.0), False
+            return self._obs(result="Archived."), Reward(value=g, cumulative=g, reason="Archived.", breakdown={"archive": g}, penalty=0.01), False
         if action.action_type == "skip":
-            return self._obs(), Reward(value=0.05, cumulative=g, reason="Skipped.", breakdown={}, penalty=0.0), False
-        return self._obs(error="Unknown action."), Reward(value=0.05, cumulative=g, reason="Unknown action.", breakdown={}, penalty=0.0), False
+            return self._obs(), Reward(value=0.05, cumulative=g, reason="Skipped.", breakdown={}, penalty=0.01), False
+        return self._obs(error="Unknown action."), Reward(value=0.05, cumulative=g, reason="Unknown action.", breakdown={}, penalty=0.01), False
 
     def _obs(self, result=None, error=None) -> Observation:
         return Observation(
