@@ -46,7 +46,7 @@ class EmailTriageEnv:
         return {**self._task.state(), "episode_rewards": self._episode_rewards, "available_tasks": ALL_TASK_IDS}
 
     def grade(self) -> float:
-        return self._task.grade() if self._task else 0.0
+        return self._task.grade() if self._task else 0.5
 
     def close(self):
         self._task = None
