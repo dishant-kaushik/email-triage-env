@@ -76,3 +76,4 @@ class Task1Easy:
 
     def state(self) -> dict:
         return {"task_id": self.TASK_ID, "step_count": self.step_count, "done": self.done, "grade": self._grade()}
+# v2
