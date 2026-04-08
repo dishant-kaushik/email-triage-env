@@ -37,7 +37,7 @@ class EmailTriageEnv:
         self._episode_rewards.append(reward.value)
         info = {"task_id": self._task_id, "step": obs.step_count,
                 "cumulative_reward": getattr(reward, 'cumulative', reward.value),
-                "grade": self._task.grade() if done else None}
+                "grade": self._task.grade() if done else self._task.grade()}
         return obs, reward, done, info
 
     def state(self) -> dict:
