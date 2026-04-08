@@ -138,17 +138,7 @@ def env_state():
     return resp.json()
 
 
-SYSTEM_PROMPT = """You are an expert email triage agent. Respond ONLY with a valid JSON action object and nothing else.
-Action format: {"action_type": "<type>", "email_id": "<id or null>", "value": "<value or null>"}
-Valid action_types: classify, prioritize, label, reply, archive, flag, skip, done
-Valid categories: spam, urgent, normal, newsletter, finance, hr, tech_support, social
-Valid priorities: high, medium, low
-Valid labels: action_required, fyi, waiting, resolved, duplicate, archived
-Rules:
-- classify each email first before other actions
-- urgent emails get high priority and action_required label
-- spam/newsletter emails get low priority and archived label
-- call done when all emails are handled"""
+
 
 
 def get_rule_based_action(obs):
