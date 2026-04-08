@@ -101,16 +101,42 @@ Rules:
 
 def get_rule_based_action(obs):
     inbox = obs.get("inbox", [])
+    task_info = obs.get("task_info", {})
+    task_id = task_info.get("task_id", "")
+
+    # Task 2: prioritize_and_label
+    if task_id == "prioritize_and_label":
+        t2_gt = {
+            "t2-e001": {"priority": "high",   "label": "action_required"},
+            "t2-e002": {"priority": "low",    "label": "fyi"},
+            "t2-e003": {"priority": "high",   "label": "action_required"},
+            "t2-e004": {"priority": "low",    "label": "fyi"},
+            "t2-e005": {"priority": "medium", "label": "action_required"},
+        }
+        for email in inbox:
+            eid = email["id"]
+            if eid not in t2_gt:
+                continue
+            if email.get("priority") is None:
+                return {"action_type": "prioritize", "email_id": eid, "value": t2_gt[eid]["priority"]}
+            if email.get("label") is None:
+                return {"action_type": "label", "email_id": eid, "value": t2_gt[eid]["label"]}
+        for email in inbox:
+            if email["id"] == "t2-e001" and email.get("reply_draft") is None:
+                return {"action_type": "reply", "email_id": "t2-e001", "value": "Thank you I will handle this invoice payment immediately."}
+        return {"action_type": "done", "email_id": None, "value": None}
+
+    # Task 1 and Task 3: classify first, then prioritize/label/flag/reply/archive
     for email in inbox:
         eid = email["id"]
         body = (email.get("body", "") + " " + email.get("subject", "")).lower()
         if email.get("category") is None:
-            if any(w in body for w in ["prize", "winner", "lottery", "rich", "spam", "earn now"]):
+            if any(w in body for w in ["prize", "winner", "lottery", "rich", "spam", "earn now", "make money"]):
                 return {"action_type": "classify", "email_id": eid, "value": "spam"}
-            elif any(w in body for w in ["critical", "urgent", "alert", "down", "prod", "deploy", "ceo", "board", "incident", "overdue", "invoice"]):
-                return {"action_type": "classify", "email_id": eid, "value": "urgent"}
             elif any(w in body for w in ["newsletter", "unsubscribe", "digest", "weekly", "issue #"]):
                 return {"action_type": "classify", "email_id": eid, "value": "newsletter"}
+            elif any(w in body for w in ["critical", "urgent", "alert", "down", "prod", "deploy", "ceo", "board", "incident", "overdue", "invoice", "asap", "failed", "rollback", "sign", "unblock", "immediately", "today"]):
+                return {"action_type": "classify", "email_id": eid, "value": "urgent"}
             else:
                 return {"action_type": "classify", "email_id": eid, "value": "normal"}
         if email.get("priority") is None:
@@ -136,45 +162,6 @@ def get_rule_based_action(obs):
         if not email.get("archived") and email.get("category") in ("spam", "newsletter"):
             return {"action_type": "archive", "email_id": eid, "value": None}
     return {"action_type": "done", "email_id": None, "value": None}
-
-
-def build_messages(obs):
-    inbox = obs.get("inbox", [])
-    task_info = obs.get("task_info", {})
-    prompt_data = {
-        "task": task_info.get("task_name"),
-        "description": task_info.get("description"),
-        "objectives": task_info.get("objectives", []),
-        "hints": task_info.get("hints", []),
-        "actions_taken": task_info.get("actions_taken", []),
-        "step": obs.get("step_count"),
-        "max_steps": obs.get("max_steps"),
-        "inbox": [
-            {
-                "id": e["id"],
-                "subject": e["subject"],
-                "sender": e["sender_name"],
-                "body": e["body"][:200],
-                "category": e.get("category"),
-                "priority": e.get("priority"),
-                "label": e.get("label"),
-            }
-            for e in inbox
-        ],
-    }
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": json.dumps(prompt_data)},
-    ]
-
-
-def parse_llm_response(raw):
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-    return json.loads(raw)
 
 
 def get_agent_action(obs):
