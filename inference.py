@@ -32,6 +32,58 @@ ALL_TASK_IDS = [
 
 # --- LLM calls via raw HTTP (no openai SDK) to avoid client init crashes ---
 
+SYSTEM_PROMPT = """You are an expert email triage agent. Respond ONLY with a valid JSON action object and nothing else.
+Action format: {"action_type": "<type>", "email_id": "<id or null>", "value": "<value or null>"}
+Valid action_types: classify, prioritize, label, reply, archive, flag, skip, done
+Valid categories: spam, urgent, normal, newsletter
+Valid priorities: high, medium, low
+Valid labels: action_required, fyi, waiting, resolved, duplicate, archived
+Rules:
+- classify each email first before other actions
+- urgent emails get high priority and action_required label
+- spam/newsletter emails get low priority and archived label
+- call done when all emails are handled"""
+
+
+def build_messages(obs):
+    inbox = obs.get("inbox", [])
+    task_info = obs.get("task_info", {})
+    prompt_data = {
+        "task": task_info.get("task_id"),
+        "description": task_info.get("description"),
+        "objectives": task_info.get("objectives", []),
+        "hints": task_info.get("hints", []),
+        "step": obs.get("step_count"),
+        "max_steps": obs.get("max_steps"),
+        "inbox": [
+            {
+                "id": e["id"],
+                "subject": e["subject"],
+                "sender": e.get("sender_name", ""),
+                "body": e["body"][:200],
+                "category": e.get("category"),
+                "priority": e.get("priority"),
+                "label": e.get("label"),
+            }
+            for e in inbox
+        ],
+    }
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": json.dumps(prompt_data)},
+    ]
+
+
+def parse_llm_response(raw):
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    return json.loads(raw)
+
+
 def call_llm_raw(messages):
     """Call the LLM proxy directly via requests — bypasses OpenAI SDK init issues."""
     url = f"{API_BASE_URL_NORMALIZED}/chat/completions"
