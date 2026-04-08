@@ -8,7 +8,6 @@ class Task1Easy:
     DIFFICULTY = "easy"
     MAX_STEPS = 10
     DESCRIPTION = "Classify 3 emails into the correct category: spam, urgent, or newsletter."
-
     GROUND_TRUTH = {"t1-e001": "spam", "t1-e002": "urgent", "t1-e003": "newsletter"}
 
     def __init__(self, emails: List[Email], seed: int = 42):
@@ -22,6 +21,8 @@ class Task1Easy:
         self.results = {}
         self.step_count = 0
         self.done = False
+        for e in self.email_list:
+            e.category = None
         return self._obs()
 
     def step(self, action: Action):
@@ -32,17 +33,19 @@ class Task1Easy:
             return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.01), True
         if action.action_type != "classify":
             g = self._grade()
-            return self._obs(error="Use action_type='classify'."), Reward(value=0.05, cumulative=g, reason="Use action_type='classify'.", breakdown={}, penalty=0.01), False
+            return self._obs(error="Use classify."), Reward(value=g, cumulative=g, reason="Use classify.", breakdown={}, penalty=0.01), False
         eid = action.email_id
         if eid not in self.GROUND_TRUTH:
             g = self._grade()
-            return self._obs(error=f"Unknown email: {eid}"), Reward(value=0.05, cumulative=g, reason=f"Unknown email: {eid}", breakdown={}, penalty=0.01), False
+            return self._obs(error=f"Unknown: {eid}"), Reward(value=g, cumulative=g, reason=f"Unknown: {eid}", breakdown={}, penalty=0.01), False
         if eid in self.results:
             g = self._grade()
-            return self._obs(error="Already classified."), Reward(value=0.05, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.01), False
+            return self._obs(error="Already classified."), Reward(value=g, cumulative=g, reason="Already classified.", breakdown={}, penalty=0.01), False
         correct = self.GROUND_TRUTH[eid]
         ok = action.value == correct
         self.results[eid] = ok
+        if eid in self.emails:
+            self.emails[eid].category = action.value
         done = len(self.results) == len(self.GROUND_TRUTH)
         self.done = done
         g = self._grade()
@@ -51,7 +54,7 @@ class Task1Easy:
 
     def _obs(self, result=None, error=None) -> Observation:
         return Observation(
-            inbox=self.email_list,
+            inbox=list(self.emails.values()),
             current_task=self.TASK_NAME,
             step_count=self.step_count,
             max_steps=self.MAX_STEPS,
@@ -59,7 +62,7 @@ class Task1Easy:
                 task_id=self.TASK_ID, task_name=self.TASK_NAME,
                 difficulty=self.DIFFICULTY, description=self.DESCRIPTION,
                 objectives=[f"Classify {eid} correctly" for eid in self.GROUND_TRUTH],
-                hints=["Suspicious sender = spam", "CRITICAL alert = urgent", "Unsubscribe = newsletter"],
+                hints=["Suspicious sender = spam","CRITICAL alert = urgent","Unsubscribe = newsletter"],
                 actions_taken=list(self.results.keys()), score_so_far=self._grade(),
             ),
             last_action_result=result, last_action_error=error, done=self.done,
@@ -75,4 +78,3 @@ class Task1Easy:
 
     def state(self) -> dict:
         return {"task_id": self.TASK_ID, "step_count": self.step_count, "done": self.done, "grade": self._grade()}
-# v2

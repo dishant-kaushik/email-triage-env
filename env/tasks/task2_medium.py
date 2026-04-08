@@ -8,7 +8,6 @@ class Task2Medium:
     DIFFICULTY = "medium"
     MAX_STEPS = 30
     DESCRIPTION = "Set priority, label, and reply for 5 emails."
-
     GROUND_TRUTH = {
         "t2-e001": {"priority": "high",   "label": "action_required"},
         "t2-e002": {"priority": "low",    "label": "fyi"},
@@ -33,6 +32,10 @@ class Task2Medium:
         self.replies = {}
         self.step_count = 0
         self.done = False
+        for e in self.email_list:
+            e.priority = None
+            e.label = None
+            e.reply_draft = None
         return self._obs()
 
     def step(self, action: Action):
@@ -43,41 +46,50 @@ class Task2Medium:
             return self._obs(result="Episode ended."), Reward(value=g, cumulative=g, reason="Episode ended.", breakdown={}, penalty=0.01), True
         eid = action.email_id
         if not eid or eid not in self.GROUND_TRUTH:
-            return self._obs(error=f"Unknown email: {eid}"), Reward(value=0.05, cumulative=g, reason=f"Unknown email: {eid}", breakdown={}, penalty=0.01), False
+            return self._obs(error=f"Unknown: {eid}"), Reward(value=g, cumulative=g, reason=f"Unknown: {eid}", breakdown={}, penalty=0.01), False
         gt = self.GROUND_TRUTH[eid]
         if action.action_type == "prioritize":
             if eid in self.priorities:
-                return self._obs(error="Already prioritized."), Reward(value=0.05, cumulative=g, reason="Already prioritized.", breakdown={}, penalty=0.01), False
-            self.priorities[eid] = action.value == gt["priority"]
+                return self._obs(error="Already prioritized."), Reward(value=g, cumulative=g, reason="Already prioritized.", breakdown={}, penalty=0.01), False
+            ok = action.value == gt["priority"]
+            self.priorities[eid] = ok
+            if eid in self.emails:
+                self.emails[eid].priority = action.value
             g = self._grade()
             return self._obs(result="Priority set."), Reward(value=g, cumulative=g, reason="Priority set.", breakdown={"priority": g}, penalty=0.01), False
         if action.action_type == "label":
             if eid in self.labels:
-                return self._obs(error="Already labeled."), Reward(value=0.05, cumulative=g, reason="Already labeled.", breakdown={}, penalty=0.01), False
-            self.labels[eid] = action.value == gt["label"]
+                return self._obs(error="Already labeled."), Reward(value=g, cumulative=g, reason="Already labeled.", breakdown={}, penalty=0.01), False
+            ok = action.value == gt["label"]
+            self.labels[eid] = ok
+            if eid in self.emails:
+                self.emails[eid].label = action.value
             g = self._grade()
             return self._obs(result="Label set."), Reward(value=g, cumulative=g, reason="Label set.", breakdown={"label": g}, penalty=0.01), False
         if action.action_type == "reply":
             if eid not in self.REPLY_EMAILS:
-                return self._obs(error="No reply needed."), Reward(value=0.05, cumulative=g, reason="No reply needed.", breakdown={}, penalty=0.01), False
+                return self._obs(error="No reply needed."), Reward(value=g, cumulative=g, reason="No reply needed.", breakdown={}, penalty=0.01), False
             if eid in self.replies:
-                return self._obs(error="Already replied."), Reward(value=0.05, cumulative=g, reason="Already replied.", breakdown={}, penalty=0.01), False
-            self.replies[eid] = bool(action.value and len(action.value.strip()) > 20)
+                return self._obs(error="Already replied."), Reward(value=g, cumulative=g, reason="Already replied.", breakdown={}, penalty=0.01), False
+            ok = bool(action.value and len(action.value.strip()) > 20)
+            self.replies[eid] = ok
+            if eid in self.emails:
+                self.emails[eid].reply_draft = action.value
             g = self._grade()
             return self._obs(result="Reply recorded."), Reward(value=g, cumulative=g, reason="Reply recorded.", breakdown={"reply": g}, penalty=0.01), False
-        return self._obs(error="Unknown action."), Reward(value=0.05, cumulative=g, reason="Unknown action.", breakdown={}, penalty=0.01), False
+        return self._obs(error="Unknown action."), Reward(value=g, cumulative=g, reason="Unknown action.", breakdown={}, penalty=0.01), False
 
     def _obs(self, result=None, error=None) -> Observation:
         return Observation(
-            inbox=self.email_list,
+            inbox=list(self.emails.values()),
             current_task=self.TASK_NAME,
             step_count=self.step_count,
             max_steps=self.MAX_STEPS,
             task_info=TaskInfo(
                 task_id=self.TASK_ID, task_name=self.TASK_NAME,
                 difficulty=self.DIFFICULTY, description=self.DESCRIPTION,
-                objectives=["Prioritize all 5", "Label all 5", "Reply to urgent ones"],
-                hints=["Invoices are high priority.", "Spam gets low + archived."],
+                objectives=["Prioritize all 5", "Label all 5", "Reply to urgent"],
+                hints=["Invoices are high priority.", "Spam gets low + fyi."],
                 actions_taken=list(self.priorities.keys()), score_so_far=self._grade(),
             ),
             last_action_result=result, last_action_error=error, done=self.done,
