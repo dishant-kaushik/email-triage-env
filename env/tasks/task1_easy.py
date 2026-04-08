@@ -69,7 +69,7 @@ class Task1Easy:
         if not self.results:
             return 0.001
         raw = sum(1 for v in self.results.values() if v) / len(self.GROUND_TRUTH)
-        return max(0.05, min(0.95, raw))
+        return 0.05 + 0.90 * (scored / total if total else 0)
 
     def grade(self) -> float:
         return self._grade()
